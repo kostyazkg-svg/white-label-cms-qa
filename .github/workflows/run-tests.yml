@@ -1,8 +1,10 @@
 name: QA Pipeline
+
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
+
 on:
   push:
     branches: [ main, master ]
@@ -23,52 +25,53 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
           cache-dependency-path: requirements.txt
+
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+
       - name: Install Playwright browsers
         run: |
           python -m playwright install --with-deps chromium
+
       - name: Run smoke & UI tests
         run: |
           pytest tests/ -v --alluredir=allure-results
-      - name: Upload Allure results (artifact)
+
+      - name: Upload Allure results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: allure-results
           path: allure-results/
           retention-days: 14
-      - name: Upload pytest logs on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: pytest-artifacts
-          path: |
-            allure-results/
-            *.log
-          retention-days: 7
 
   allure-report:
     name: Publish Allure Report
     needs: smoke-tests
     if: always()
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
       - name: Download Allure results
         uses: actions/download-artifact@v4
         with:
           name: allure-results
           path: allure-results
+
       - name: Get Allure history
         uses: actions/checkout@v4
         if: always()
@@ -76,6 +79,7 @@ jobs:
         with:
           ref: gh-pages
           path: gh-pages
+
       - name: Generate Allure report
         uses: simple-elf/allure-report-action@master
         if: always()
@@ -83,11 +87,15 @@ jobs:
           allure_results: allure-results
           allure_history: allure-history
           keep_reports: 20
-      - name: Deploy Allure report to GitHub Pages
-        if: always()
-        uses: peaceiris/actions-gh-pages@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_branch: gh-pages
-          publish_dir: allure-history
-          force_orphan: true
+          path: allure-history
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
