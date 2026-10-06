@@ -1,0 +1,1 @@
+"""Пакет Page Object Model."""
