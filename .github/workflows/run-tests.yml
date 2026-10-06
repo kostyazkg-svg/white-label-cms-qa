@@ -1,5 +1,8 @@
 name: QA Pipeline
-
+permissions:
+  contents: write
+  pages: write
+  id-token: write
 on:
   push:
     branches: [ main, master ]
@@ -87,3 +90,4 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
           publish_dir: allure-history
+          force_orphan: true
